@@ -10,15 +10,19 @@
 
 Add 3 interactive frontend demos to Tong Liu's portfolio website, showcasing real project work from her resume. Each demo is a standalone HTML file using Chart.js + vanilla JS — no build step, no framework, deployed alongside the existing reveal.js site on Vercel.
 
-## Design Palette
+## Design Palette — PANTONE Light Theme
 
-Continue the PANTONE Colors of the Year theme from the main site:
-- Background: `#0D1117` (dark)
-- Surface: `#151B23`
-- Mocha Mousse: `#A47764` (primary)
-- Peach Fuzz: `#FFBE98` (highlights)
-- Very Peri: `#6667AB` (accent)
-- Text: `#E8E2DA`
+Light, warm palette using PANTONE Colors of the Year:
+- Background: `#FAF8F5` (warm off-white)
+- Surface: `#FFFFFF` (white cards with subtle shadow)
+- Border: `#E8E2DA` (warm gray)
+- Mocha Mousse: `#A47764` — PANTONE 2025 (primary, headings, active states)
+- Peach Fuzz: `#FFBE98` — PANTONE 2024 (highlights, badges, hover)
+- Peach Light: `#FFF3EB` (peach tint backgrounds for cards/callouts)
+- Very Peri: `#6667AB` — PANTONE 2022 (links, accent, interactive elements)
+- Viva Magenta: `#BB2649` — PANTONE 2023 (significant/alert indicators)
+- Text: `#2C2420` (warm dark brown, not pure black)
+- Muted: `#8B8680` (secondary text)
 - Fonts: Cormorant Garamond (headings) + Inter (body)
 
 ## File Structure
