@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A/B Test Calculator — Tong Liu</title>
+  <link rel="stylesheet" href="shared.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+  <style>
+    .result-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .result-row:last-child { border-bottom: none; }
+    .result-label { font-size: 13px; color: var(--text-muted); }
+    .result-value { font-size: 14px; font-weight: 600; color: var(--text); font-family: monospace; }
+    .group-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; transition: all var(--transition); }
+    .group-card:hover { border-color: var(--mocha-light); box-shadow: var(--shadow-sm); }
+    .group-card.control { border-top: 3px solid var(--border-hover); }
+    .group-card.treatment { border-top: 3px solid var(--mocha); }
+    .group-title { font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 14px; }
+    .input-row { margin-bottom: 14px; }
+    .big-result { text-align: center; padding: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); transition: all var(--transition); }
+    .big-result:hover { box-shadow: var(--shadow-sm); }
+    .big-result.significant { background: #E8F5E9; border-color: #C8E6C9; }
+    .big-result.not-significant { background: #F5F5F5; border-color: #E0E0E0; }
+    .big-result-value { font-family: var(--heading-font); font-size: 36px; font-weight: 700; line-height: 1; }
+    .big-result-label { font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); margin-top: 8px; }
+    .sample-note { background: var(--peach-light); border: 1px solid rgba(255,190,152,0.3); border-radius: var(--radius-sm); padding: 14px 18px; font-size: 13px; color: var(--peach-dark); margin-top: 20px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="page-header">
+      <div class="breadcrumb">
+        <a href="../index.html">Portfolio</a><span>/</span>
+        <a href="index.html">Demos</a><span>/</span>
+        <span style="color: var(--text);">A/B Test Calculator</span>
+      </div>
+      <h1 class="page-title">A/B Test Significance Calculator</h1>
+      <p class="page-subtitle">Real-time statistical significance calculator with z-test, p-value, and confidence intervals — inspired by verification strategy testing at LendingClub.</p>
+    </div>
+
+    <!-- Presets -->
+    <div style="margin-bottom: 20px;">
+      <label class="input-label">Quick Presets</label>
+      <div class="presets">
+        <button class="btn" id="preset-small">Quick Test (1K)</button>
+        <button class="btn" id="preset-medium">Medium (10K)</button>
+        <button class="btn active" id="preset-large">Large Scale (100K)</button>
+        <button class="btn" id="preset-lending">LendingClub Example</button>
+      </div>
+    </div>
+
+    <div class="two-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+      <!-- Input -->
+      <div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+          <div class="group-card control">
+            <div class="group-title">Control Group</div>
+            <div class="input-row">
+              <label class="input-label">Sample Size</label>
+              <input type="number" class="input-field" id="controlN" value="100000">
+            </div>
+            <div class="input-row">
+              <label class="input-label">Conversion Rate (%)</label>
+              <input type="number" class="input-field" id="controlRate" value="4.2" step="0.1">
+            </div>
+          </div>
+          <div class="group-card treatment">
+            <div class="group-title">Treatment Group</div>
+            <div class="input-row">
+              <label class="input-label">Sample Size</label>
+              <input type="number" class="input-field" id="treatmentN" value="100000">
+            </div>
+            <div class="input-row">
+              <label class="input-label">Conversion Rate (%)</label>
+              <input type="number" class="input-field" id="treatmentRate" value="4.8" step="0.1">
+            </div>
+          </div>
+        </div>
+
+        <!-- Big results -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+          <div class="big-result" id="liftResult">
+            <div class="big-result-value" id="liftDisplay">+14.3%</div>
+            <div class="big-result-label">Relative Lift</div>
+          </div>
+          <div class="big-result" id="pResult">
+            <div class="big-result-value" id="pDisplay" style="font-size: 28px;">0.0001</div>
+            <div class="big-result-label">P-Value</div>
+          </div>
+          <div class="big-result" id="sigResult">
+            <div class="big-result-value" id="sigDisplay" style="font-size: 22px;">● Significant</div>
+            <div class="big-result-label">at α = 0.05</div>
+          </div>
+        </div>
+
+        <!-- Detailed results -->
+        <div class="card">
+          <div class="section-label">Detailed Results</div>
+          <div class="result-row"><span class="result-label">Z-Score</span><span class="result-value" id="zScore">—</span></div>
+          <div class="result-row"><span class="result-label">P-Value (two-tailed)</span><span class="result-value" id="pValueDetail">—</span></div>
+          <div class="result-row"><span class="result-label">Absolute Lift</span><span class="result-value" id="absLift">—</span></div>
+          <div class="result-row"><span class="result-label">95% Confidence Interval</span><span class="result-value" id="ciDetail">—</span></div>
+          <div class="result-row"><span class="result-label">Standard Error</span><span class="result-value" id="seDetail">—</span></div>
+          <div class="result-row"><span class="result-label">Statistical Power (80%)</span><span class="result-value" id="powerDetail">—</span></div>
+
+          <div class="sample-note" id="sampleNote"></div>
+        </div>
+      </div>
+
+      <!-- Chart -->
+      <div>
+        <div class="chart-container" style="height: 420px;">
+          <div class="section-label" style="margin-bottom: 12px;">Normal Distribution</div>
+          <canvas id="distChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-footer">
+      <p>Statistical formulas use standard two-proportion z-test · <a href="index.html">All Demos</a> · <a href="../index.html">Portfolio</a></p>
+    </div>
+  </div>
+
+  <script>
+    var distChart = null;
+    var activePreset = 'preset-large';
+
+    // Normal CDF approximation (Abramowitz and Stegun)
+    function normalCDF(x) {
+      var a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741, a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
+      var sign = x < 0 ? -1 : 1;
+      x = Math.abs(x) / Math.sqrt(2);
+      var t = 1.0 / (1.0 + p * x);
+      var y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+      return 0.5 * (1.0 + sign * y);
+    }
+
+    // Normal PDF
+    function normalPDF(x) {
+      return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
+    }
+
+    function calculate() {
+      var n1 = parseInt(document.getElementById('controlN').value) || 1;
+      var n2 = parseInt(document.getElementById('treatmentN').value) || 1;
+      var p1 = parseFloat(document.getElementById('controlRate').value) / 100 || 0;
+      var p2 = parseFloat(document.getElementById('treatmentRate').value) / 100 || 0;
+
+      var pPooled = (p1 * n1 + p2 * n2) / (n1 + n2);
+      var se = Math.sqrt(pPooled * (1 - pPooled) * (1 / n1 + 1 / n2));
+      var z = se > 0 ? (p2 - p1) / se : 0;
+      var pValue = 2 * (1 - normalCDF(Math.abs(z)));
+      var sig = pValue < 0.05;
+
+      var relLift = p1 > 0 ? ((p2 - p1) / p1 * 100) : 0;
+      var absLift = (p2 - p1) * 100;
+      var ciMargin = 1.96 * se * 100;
+      var ciLower = absLift - ciMargin;
+      var ciUpper = absLift + ciMargin;
+
+      // MDE for power = 80%
+      var zAlpha = 1.96, zBeta = 0.842;
+      var requiredN = Math.ceil(Math.pow(zAlpha + zBeta, 2) * (p1 * (1 - p1) + p2 * (1 - p2)) / Math.pow(p2 - p1 || 0.001, 2));
+
+      // Update display
+      document.getElementById('liftDisplay').textContent = (relLift > 0 ? '+' : '') + relLift.toFixed(1) + '%';
+      document.getElementById('liftDisplay').style.color = sig ? '#2E7D32' : '#757575';
+      document.getElementById('pDisplay').textContent = pValue < 0.0001 ? '< 0.0001' : pValue.toFixed(4);
+      document.getElementById('sigDisplay').textContent = sig ? '● Significant' : '○ Not Significant';
+      document.getElementById('sigDisplay').style.color = sig ? '#2E7D32' : '#757575';
+
+      var sigResult = document.getElementById('sigResult');
+      sigResult.className = sig ? 'big-result significant' : 'big-result not-significant';
+
+      document.getElementById('zScore').textContent = z.toFixed(4);
+      document.getElementById('pValueDetail').textContent = pValue < 0.0001 ? '< 0.0001' : pValue.toFixed(6);
+      document.getElementById('absLift').textContent = (absLift > 0 ? '+' : '') + absLift.toFixed(3) + ' pp';
+      document.getElementById('ciDetail').textContent = '[' + ciLower.toFixed(3) + '%, ' + ciUpper.toFixed(3) + '%]';
+      document.getElementById('seDetail').textContent = (se * 100).toFixed(4) + ' pp';
+      document.getElementById('powerDetail').textContent = n1 >= requiredN ? '✓ Sufficient (' + requiredN.toLocaleString() + '/group needed)' : '✗ Need ' + requiredN.toLocaleString() + '/group';
+
+      var noteEl = document.getElementById('sampleNote');
+      noteEl.textContent = 'To detect a ' + Math.abs(relLift).toFixed(1) + '% relative lift (' + Math.abs(absLift).toFixed(2) + ' pp) at 95% confidence with 80% power, you need at least ' + requiredN.toLocaleString() + ' users per group.';
+
+      drawDistribution(z, sig);
+    }
+
+    function drawDistribution(zScore, sig) {
+      var labels = [];
+      var data = [];
+      var bgColors = [];
+      for (var x = -4; x <= 4; x += 0.1) {
+        var rounded = Math.round(x * 10) / 10;
+        labels.push(rounded.toFixed(1));
+        var y = normalPDF(rounded);
+        data.push(y);
+        // Color rejection regions
+        if (rounded <= -1.96 || rounded >= 1.96) {
+          bgColors.push('rgba(187, 38, 73, 0.3)');
+        } else {
+          bgColors.push('rgba(164, 119, 100, 0.15)');
+        }
+      }
+
+      if (distChart) distChart.destroy();
+      distChart = new Chart(document.getElementById('distChart'), {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: data,
+            backgroundColor: bgColors,
+            borderColor: bgColors.map(function(c) { return c.replace('0.3', '0.6').replace('0.15', '0.3'); }),
+            borderWidth: 1,
+            barPercentage: 1.0,
+            categoryPercentage: 1.0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#2C2420', cornerRadius: 8, padding: 10,
+              titleFont: { family: 'Inter', size: 12 }, bodyFont: { family: 'Inter', size: 12 },
+              callbacks: {
+                title: function(ctx) { return 'z = ' + ctx[0].label; },
+                label: function(ctx) { return 'density = ' + ctx.parsed.y.toFixed(4); }
+              }
+            },
+            annotation: undefined
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: {
+                font: { family: 'Inter', size: 10 },
+                callback: function(val, idx) {
+                  var label = this.getLabelForValue(val);
+                  var num = parseFloat(label);
+                  if (num === -4 || num === -2 || num === 0 || num === 2 || num === 4) return label;
+                  if (Math.abs(num - zScore) < 0.15) return 'z*';
+                  return '';
+                },
+                maxRotation: 0
+              }
+            },
+            y: {
+              display: false
+            }
+          }
+        }
+      });
+    }
+
+    function setPreset(presetId, n1, r1, n2, r2) {
+      document.getElementById('controlN').value = n1;
+      document.getElementById('controlRate').value = r1;
+      document.getElementById('treatmentN').value = n2;
+      document.getElementById('treatmentRate').value = r2;
+
+      // Update active button
+      document.querySelectorAll('.presets .btn').forEach(function(b) { b.classList.remove('active'); });
+      document.getElementById(presetId).classList.add('active');
+      activePreset = presetId;
+
+      calculate();
+    }
+
+    // Event listeners
+    document.getElementById('preset-small').addEventListener('click', function() { setPreset('preset-small', 1000, 5.0, 1000, 5.8); });
+    document.getElementById('preset-medium').addEventListener('click', function() { setPreset('preset-medium', 10000, 3.5, 10000, 4.0); });
+    document.getElementById('preset-large').addEventListener('click', function() { setPreset('preset-large', 100000, 4.2, 100000, 4.8); });
+    document.getElementById('preset-lending').addEventListener('click', function() { setPreset('preset-lending', 50000, 8.5, 50000, 5.1); });
+
+    // Live calculation on input change
+    var inputs = document.querySelectorAll('.input-field');
+    inputs.forEach(function(input) {
+      input.addEventListener('input', function() {
+        // Remove active preset
+        document.querySelectorAll('.presets .btn').forEach(function(b) { b.classList.remove('active'); });
+        calculate();
+      });
+      input.addEventListener('focus', function() {
+        this.parentElement.parentElement.style.borderColor = 'var(--mocha)';
+        this.parentElement.parentElement.style.boxShadow = '0 0 0 2px rgba(164,119,100,0.15)';
+      });
+      input.addEventListener('blur', function() {
+        this.parentElement.parentElement.style.borderColor = '';
+        this.parentElement.parentElement.style.boxShadow = '';
+      });
+    });
+
+    calculate();
+  </script>
+</body>
+</html>

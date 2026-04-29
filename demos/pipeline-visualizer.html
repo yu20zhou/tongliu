@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pipeline Visualizer — Tong Liu</title>
+  <link rel="stylesheet" href="shared.css">
+  <style>
+    .pipeline-wrapper { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 40px 20px; box-shadow: var(--shadow-sm); overflow: hidden; }
+    .pipeline-svg { width: 100%; height: 320px; }
+    .pipeline-svg text { font-family: 'Inter', sans-serif; font-size: 12px; fill: var(--text); pointer-events: none; }
+    .pipeline-svg .node-label { font-weight: 600; font-size: 13px; }
+    .pipeline-svg .node-sub { font-size: 10px; fill: var(--text-muted); }
+    .pipeline-svg .edge { stroke: var(--border); stroke-width: 2; fill: none; }
+    .pipeline-svg .arrow { fill: var(--border); }
+    .particle { r: 4; fill: var(--peach); opacity: 0; }
+    .particle.animated { animation: particleFlow 2.5s linear infinite; }
+    @keyframes particleFlow { 0% { opacity: 0; } 5% { opacity: 1; } 95% { opacity: 1; } 100% { opacity: 0; } }
+    .detail-area { margin-top: 24px; min-height: 200px; }
+    .detail-empty { display: flex; align-items: center; justify-content: center; height: 200px; color: var(--text-muted); font-size: 14px; border: 1px dashed var(--border); border-radius: var(--radius); }
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .detail-section h4 { font-family: var(--heading-font); font-size: 18px; color: var(--mocha); margin-bottom: 8px; }
+    .detail-section p { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 6px; }
+    .schema-tag { display: inline-block; font-size: 11px; font-family: monospace; background: var(--peach-light); color: var(--peach-dark); padding: 2px 8px; border-radius: 4px; margin: 2px 4px 2px 0; }
+    .tech-tag { display: inline-block; font-size: 11px; background: var(--peri-bg); color: var(--peri); padding: 2px 8px; border-radius: 4px; margin: 2px 4px 2px 0; }
+    .sample-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+    .sample-table th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); padding: 6px 8px; border-bottom: 1px solid var(--border); }
+    .sample-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); color: var(--text-secondary); font-family: monospace; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="page-header">
+      <div class="breadcrumb">
+        <a href="../index.html">Portfolio</a><span>/</span>
+        <a href="index.html">Demos</a><span>/</span>
+        <span style="color: var(--text);">Pipeline Visualizer</span>
+      </div>
+      <h1 class="page-title">Holdout Measurement Pipeline</h1>
+      <p class="page-subtitle">Multi-stage production data pipeline — click any node to explore its schema, tech stack, and sample data.</p>
+    </div>
+
+    <div class="pipeline-wrapper fade-in">
+      <svg class="pipeline-svg" viewBox="0 0 960 300" id="pipelineSvg"></svg>
+    </div>
+
+    <div class="detail-area fade-in" id="detailArea">
+      <div class="detail-empty">Click a pipeline node above to explore details</div>
+    </div>
+
+    <div class="demo-footer">
+      <p>Synthetic data for demonstration only · <a href="index.html">All Demos</a> · <a href="../index.html">Portfolio</a></p>
+    </div>
+  </div>
+
+  <script>
+    var NODES = [
+      { id: 'raw', x: 40, y: 120, w: 150, h: 60, label: 'Raw Experiment', sub: 'Data Ingestion', icon: '📥',
+        desc: 'Ingests raw holdout experiment statistics from the experimentation platform. Each row represents one experiment arm\'s metric value for a specific time window.',
+        tech: ['Python', 'Hive'],
+        schema: ['experiment_id', 'arm', 'metric_name', 'metric_value', 'date', 'platform'],
+        sample: [
+          ['exp_2847', 'control', 'dau', '12.4M', '2026-04-01', 'ios'],
+          ['exp_2847', 'treatment', 'dau', '12.85M', '2026-04-01', 'ios'],
+          ['exp_2847', 'control', 'dau', '11.9M', '2026-04-01', 'android']
+        ]
+      },
+      { id: 'cohort', x: 230, y: 30, w: 150, h: 60, label: 'Creator-Cohort', sub: 'Segmentation', icon: '👥',
+        desc: 'Segments experiment data by creator cohort — grouping users by when they joined the platform. This enables long-term behavior analysis across different user vintages.',
+        tech: ['Python', 'Presto', 'Hive'],
+        schema: ['experiment_id', 'arm', 'cohort_id', 'cohort_start', 'metric_value', 'user_count'],
+        sample: [
+          ['exp_2847', 'control', 'c_2024q1', '2024-01', '14.2M', '3.2M'],
+          ['exp_2847', 'treatment', 'c_2024q1', '2024-01', '14.8M', '3.2M'],
+          ['exp_2847', 'control', 'c_2024q3', '2024-07', '10.1M', '2.8M']
+        ]
+      },
+      { id: 'subpop', x: 420, y: 120, w: 150, h: 60, label: 'Subpopulation', sub: 'Breakout', icon: '🌍',
+        desc: 'Breaks down cohort-level results by subpopulation dimensions: country, region, and age group. Enables leadership to understand differential treatment effects across user segments.',
+        tech: ['Python', 'Presto'],
+        schema: ['experiment_id', 'arm', 'cohort_id', 'country', 'region', 'age_group', 'metric_value'],
+        sample: [
+          ['exp_2847', 'treatment', 'c_2024q1', 'US', 'NA', '18-24', '5.1M'],
+          ['exp_2847', 'treatment', 'c_2024q1', 'DE', 'EU', '25-34', '2.3M'],
+          ['exp_2847', 'control', 'c_2024q1', 'JP', 'APAC', '35-44', '1.8M']
+        ]
+      },
+      { id: 'agg', x: 610, y: 30, w: 150, h: 60, label: 'Aggregation', sub: '& Dedup', icon: '🔄',
+        desc: 'Aggregates subpopulation breakouts into a unified product-contribution table. Handles deduplication from rebalanced experiments, validates row counts, and applies the reusable pattern: overall → archive → demotion → subpopulation → metrics expansion.',
+        tech: ['Python', 'Hive', 'Backfill Automation'],
+        schema: ['experiment_id', 'product', 'metric_name', 'control_value', 'treatment_value', 'lift_pct', 'p_value', 'is_significant'],
+        sample: [
+          ['exp_2847', 'flagship_app', 'dau', '142.3M', '147.1M', '+3.4%', '0.002', 'true'],
+          ['exp_2847', 'flagship_app', 'engagement', '28.7%', '29.8%', '+3.8%', '0.008', 'true'],
+          ['exp_2847', 'flagship_app', 'revenue', '$2.45', '$2.58', '+5.3%', '0.004', 'true']
+        ]
+      },
+      { id: 'table', x: 800, y: 120, w: 150, h: 60, label: 'Product Table', sub: 'Contribution', icon: '📋',
+        desc: 'The final product-contribution table consumed by leadership dashboards. One row per experiment × metric, with all statistical summaries pre-computed. Powers the top-priority dashboards reviewed by app leadership.',
+        tech: ['Hive', 'Dashboard API'],
+        schema: ['experiment_id', 'product', 'metric', 'lift', 'ci_lower', 'ci_upper', 'p_value', 'status', 'last_updated'],
+        sample: [
+          ['exp_2847', 'flagship_app', 'dau', '+3.4%', '+1.8%', '+5.0%', '0.002', 'SIGNIFICANT', '2026-04-28'],
+          ['exp_2901', 'flagship_app', 'retention_d7', '+1.2%', '-0.3%', '+2.7%', '0.11', 'NOT_SIG', '2026-04-28'],
+          ['exp_2847', 'flagship_app', 'revenue_pu', '+5.3%', '+2.1%', '+8.5%', '0.004', 'SIGNIFICANT', '2026-04-28']
+        ]
+      }
+    ];
+
+    var EDGES = [
+      { from: 'raw', to: 'cohort' },
+      { from: 'cohort', to: 'subpop' },
+      { from: 'subpop', to: 'agg' },
+      { from: 'agg', to: 'table' }
+    ];
+
+    var activeNode = null;
+
+    function buildSvg() {
+      var svg = document.getElementById('pipelineSvg');
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+      // Draw edges
+      EDGES.forEach(function(edge, idx) {
+        var from = NODES.find(function(n) { return n.id === edge.from; });
+        var to = NODES.find(function(n) { return n.id === edge.to; });
+        var x1 = from.x + from.w;
+        var y1 = from.y + from.h / 2;
+        var x2 = to.x;
+        var y2 = to.y + to.h / 2;
+        var mx = (x1 + x2) / 2;
+
+        var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('class', 'edge');
+        path.setAttribute('d', 'M' + x1 + ' ' + y1 + ' C' + mx + ' ' + y1 + ' ' + mx + ' ' + y2 + ' ' + x2 + ' ' + y2);
+        path.id = 'edge-' + idx;
+        svg.appendChild(path);
+
+        // Arrow
+        var arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        arrow.setAttribute('class', 'arrow');
+        arrow.setAttribute('points', (x2 - 8) + ',' + (y2 - 4) + ' ' + x2 + ',' + y2 + ' ' + (x2 - 8) + ',' + (y2 + 4));
+        svg.appendChild(arrow);
+
+        // Animated particle
+        var circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('class', 'particle animated');
+        circle.setAttribute('r', '4');
+        var animMotion = document.createElementNS('http://www.w3.org/2000/svg', 'animateMotion');
+        animMotion.setAttribute('dur', (2 + idx * 0.4) + 's');
+        animMotion.setAttribute('repeatCount', 'indefinite');
+        animMotion.setAttribute('begin', (idx * 0.6) + 's');
+        var mpath = document.createElementNS('http://www.w3.org/2000/svg', 'mpath');
+        mpath.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#edge-' + idx);
+        animMotion.appendChild(mpath);
+        circle.appendChild(animMotion);
+        svg.appendChild(circle);
+      });
+
+      // Draw nodes
+      NODES.forEach(function(node) {
+        var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('class', 'pipeline-node');
+        g.id = 'node-' + node.id;
+        g.style.cursor = 'pointer';
+        g.addEventListener('click', function() { showDetail(node.id); });
+
+        var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', node.x);
+        rect.setAttribute('y', node.y);
+        rect.setAttribute('width', node.w);
+        rect.setAttribute('height', node.h);
+        rect.setAttribute('rx', '10');
+        rect.setAttribute('fill', '#FFFFFF');
+        rect.setAttribute('stroke', '#E8E2DA');
+        rect.setAttribute('stroke-width', '1.5');
+        g.appendChild(rect);
+
+        var icon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        icon.setAttribute('x', node.x + 14);
+        icon.setAttribute('y', node.y + 28);
+        icon.setAttribute('font-size', '18');
+        icon.textContent = node.icon;
+        g.appendChild(icon);
+
+        var label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('class', 'node-label');
+        label.setAttribute('x', node.x + 38);
+        label.setAttribute('y', node.y + 28);
+        label.textContent = node.label;
+        g.appendChild(label);
+
+        var sub = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        sub.setAttribute('class', 'node-sub');
+        sub.setAttribute('x', node.x + 38);
+        sub.setAttribute('y', node.y + 44);
+        sub.textContent = node.sub;
+        g.appendChild(sub);
+
+        svg.appendChild(g);
+      });
+    }
+
+    function showDetail(nodeId) {
+      // Update active states
+      document.querySelectorAll('.pipeline-node').forEach(function(el) { el.classList.remove('active'); });
+      document.getElementById('node-' + nodeId).classList.add('active');
+
+      var node = NODES.find(function(n) { return n.id === nodeId; });
+      var area = document.getElementById('detailArea');
+
+      // Build detail panel with DOM methods
+      while (area.firstChild) area.removeChild(area.firstChild);
+
+      var card = document.createElement('div');
+      card.className = 'card fade-in';
+
+      // Title
+      var title = document.createElement('h3');
+      title.style.cssText = 'font-family: var(--heading-font); font-size: 22px; color: var(--mocha); margin-bottom: 16px;';
+      title.textContent = node.icon + ' ' + node.label + ' — ' + node.sub;
+      card.appendChild(title);
+
+      var grid = document.createElement('div');
+      grid.className = 'detail-grid';
+
+      // Left column
+      var left = document.createElement('div');
+      left.className = 'detail-section';
+
+      var descTitle = document.createElement('h4');
+      descTitle.textContent = 'Description';
+      left.appendChild(descTitle);
+
+      var descP = document.createElement('p');
+      descP.textContent = node.desc;
+      left.appendChild(descP);
+
+      var techTitle = document.createElement('h4');
+      techTitle.style.marginTop = '16px';
+      techTitle.textContent = 'Tech Stack';
+      left.appendChild(techTitle);
+
+      var techDiv = document.createElement('div');
+      node.tech.forEach(function(t) {
+        var tag = document.createElement('span');
+        tag.className = 'tech-tag';
+        tag.textContent = t;
+        techDiv.appendChild(tag);
+      });
+      left.appendChild(techDiv);
+
+      var schemaTitle = document.createElement('h4');
+      schemaTitle.style.marginTop = '16px';
+      schemaTitle.textContent = 'Schema';
+      left.appendChild(schemaTitle);
+
+      var schemaDiv = document.createElement('div');
+      node.schema.forEach(function(s) {
+        var tag = document.createElement('span');
+        tag.className = 'schema-tag';
+        tag.textContent = s;
+        schemaDiv.appendChild(tag);
+      });
+      left.appendChild(schemaDiv);
+
+      grid.appendChild(left);
+
+      // Right column — sample data
+      var right = document.createElement('div');
+      right.className = 'detail-section';
+
+      var sampleTitle = document.createElement('h4');
+      sampleTitle.textContent = 'Sample Data';
+      right.appendChild(sampleTitle);
+
+      var table = document.createElement('table');
+      table.className = 'sample-table';
+
+      var thead = document.createElement('thead');
+      var headerRow = document.createElement('tr');
+      node.schema.forEach(function(col) {
+        var th = document.createElement('th');
+        th.textContent = col;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      var tbodyEl = document.createElement('tbody');
+      node.sample.forEach(function(row) {
+        var tr = document.createElement('tr');
+        row.forEach(function(cell) {
+          var td = document.createElement('td');
+          td.textContent = cell;
+          tr.appendChild(td);
+        });
+        tbodyEl.appendChild(tr);
+      });
+      table.appendChild(tbodyEl);
+      right.appendChild(table);
+
+      grid.appendChild(right);
+      card.appendChild(grid);
+      area.appendChild(card);
+    }
+
+    buildSvg();
+  </script>
+</body>
+</html>

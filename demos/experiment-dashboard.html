@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Experiment Dashboard — Tong Liu</title>
+  <link rel="stylesheet" href="shared.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+</head>
+<body>
+  <div class="page">
+    <div class="page-header">
+      <div class="breadcrumb">
+        <a href="../index.html">Portfolio</a>
+        <span>/</span>
+        <a href="index.html">Demos</a>
+        <span>/</span>
+        <span style="color: var(--text);">Experiment Dashboard</span>
+      </div>
+      <h1 class="page-title">Holdout Experiment Dashboard</h1>
+      <p class="page-subtitle">Interactive experiment results with cohort filtering and statistical significance — inspired by Meta's experimentation platform.</p>
+    </div>
+
+    <!-- Controls -->
+    <div class="card fade-in" style="margin-bottom: 24px;">
+      <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-end;">
+        <div>
+          <label class="input-label">Metric</label>
+          <div class="select-wrapper">
+            <select id="metricSelect">
+              <option value="dau">Daily Active Users (DAU)</option>
+              <option value="engagement">Engagement Rate</option>
+              <option value="revenue">Revenue per User</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="input-label">Region</label>
+          <div class="checkbox-group" id="regionFilters">
+            <div class="checkbox-pill checked" data-value="us">🇺🇸 US</div>
+            <div class="checkbox-pill checked" data-value="eu">🇪🇺 EU</div>
+            <div class="checkbox-pill checked" data-value="apac">🌏 APAC</div>
+            <div class="checkbox-pill checked" data-value="latam">🌎 LATAM</div>
+          </div>
+        </div>
+        <div>
+          <label class="input-label">Age Group</label>
+          <div class="checkbox-group" id="ageFilters">
+            <div class="checkbox-pill checked" data-value="18-24">18-24</div>
+            <div class="checkbox-pill checked" data-value="25-34">25-34</div>
+            <div class="checkbox-pill checked" data-value="35-44">35-44</div>
+            <div class="checkbox-pill checked" data-value="45+">45+</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary + Chart -->
+    <div class="two-col" style="display: grid; grid-template-columns: 1fr 320px; gap: 24px; margin-bottom: 24px;">
+      <div class="chart-container fade-in" style="height: 340px;">
+        <canvas id="experimentChart"></canvas>
+      </div>
+      <div class="card fade-in" id="summaryCard">
+        <div class="section-label">Overall Result</div>
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+          <span id="sigBadge" class="badge badge-significant">● Significant</span>
+          <span style="font-size: 12px; color: var(--text-muted);">at α = 0.05</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+          <div class="stat-box"><div class="stat-value" id="liftValue">+3.2%</div><div class="stat-label">Lift</div></div>
+          <div class="stat-box"><div class="stat-value" id="pValue" style="font-size: 22px;">0.003</div><div class="stat-label">P-Value</div></div>
+        </div>
+        <div class="divider"></div>
+        <div style="margin-top: 16px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span style="font-size: 13px; color: var(--text-muted);">Control Mean</span><span style="font-size: 13px; font-weight: 600;" id="controlMean">—</span></div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span style="font-size: 13px; color: var(--text-muted);">Treatment Mean</span><span style="font-size: 13px; font-weight: 600;" id="treatmentMean">—</span></div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;"><span style="font-size: 13px; color: var(--text-muted);">95% CI</span><span style="font-size: 13px; font-weight: 600;" id="ciValue">—</span></div>
+          <div style="display: flex; justify-content: space-between;"><span style="font-size: 13px; color: var(--text-muted);">Sample Size</span><span style="font-size: 13px; font-weight: 600;" id="sampleSize">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cohort Table -->
+    <div class="card fade-in">
+      <div class="section-label">Cohort Breakdown</div>
+      <table class="data-table">
+        <thead><tr><th>Cohort</th><th>Control</th><th>Treatment</th><th>Lift</th><th>P-Value</th><th>Status</th></tr></thead>
+        <tbody id="cohortTable"></tbody>
+      </table>
+    </div>
+
+    <div class="demo-footer">
+      <p>Synthetic data for demonstration only · <a href="index.html">All Demos</a> · <a href="../index.html">Portfolio</a></p>
+    </div>
+  </div>
+
+  <script>
+    const DATA = {
+      dau: {
+        label: "Daily Active Users (M)", format: function(v) { return (v / 1e6).toFixed(1) + "M"; },
+        cohorts: {
+          "US · 18-24": { control: 12400000, treatment: 12850000, n: 5000000, p: 0.002 },
+          "US · 25-34": { control: 18200000, treatment: 18750000, n: 7200000, p: 0.008 },
+          "US · 35-44": { control: 14100000, treatment: 14300000, n: 5600000, p: 0.12 },
+          "US · 45+":   { control: 9800000,  treatment: 9900000,  n: 3900000, p: 0.34 },
+          "EU · 18-24": { control: 8900000,  treatment: 9250000,  n: 3500000, p: 0.005 },
+          "EU · 25-34": { control: 13500000, treatment: 13800000, n: 5400000, p: 0.04 },
+          "EU · 35-44": { control: 10200000, treatment: 10350000, n: 4100000, p: 0.18 },
+          "EU · 45+":   { control: 7100000,  treatment: 7150000,  n: 2800000, p: 0.52 },
+          "APAC · 18-24": { control: 15600000, treatment: 16200000, n: 6200000, p: 0.001 },
+          "APAC · 25-34": { control: 22100000, treatment: 22800000, n: 8800000, p: 0.006 },
+          "APAC · 35-44": { control: 16800000, treatment: 17000000, n: 6700000, p: 0.15 },
+          "APAC · 45+":   { control: 11200000, treatment: 11300000, n: 4500000, p: 0.41 },
+          "LATAM · 18-24": { control: 5200000, treatment: 5450000, n: 2100000, p: 0.009 },
+          "LATAM · 25-34": { control: 7800000, treatment: 8050000, n: 3100000, p: 0.02 },
+          "LATAM · 35-44": { control: 5900000, treatment: 6000000, n: 2400000, p: 0.22 },
+          "LATAM · 45+":   { control: 3900000, treatment: 3950000, n: 1600000, p: 0.48 }
+        }
+      },
+      engagement: {
+        label: "Engagement Rate (%)", format: function(v) { return v.toFixed(2) + "%"; },
+        cohorts: {
+          "US · 18-24": { control: 34.2, treatment: 36.1, n: 5000000, p: 0.001 },
+          "US · 25-34": { control: 28.7, treatment: 29.8, n: 7200000, p: 0.01 },
+          "US · 35-44": { control: 22.4, treatment: 22.9, n: 5600000, p: 0.08 },
+          "US · 45+":   { control: 18.1, treatment: 18.3, n: 3900000, p: 0.31 },
+          "EU · 18-24": { control: 31.5, treatment: 33.2, n: 3500000, p: 0.003 },
+          "EU · 25-34": { control: 26.3, treatment: 27.1, n: 5400000, p: 0.03 },
+          "EU · 35-44": { control: 20.8, treatment: 21.2, n: 4100000, p: 0.14 },
+          "EU · 45+":   { control: 16.5, treatment: 16.7, n: 2800000, p: 0.45 },
+          "APAC · 18-24": { control: 38.9, treatment: 41.2, n: 6200000, p: 0.0005 },
+          "APAC · 25-34": { control: 32.1, treatment: 33.5, n: 8800000, p: 0.004 },
+          "APAC · 35-44": { control: 25.6, treatment: 26.0, n: 6700000, p: 0.16 },
+          "APAC · 45+":   { control: 20.2, treatment: 20.5, n: 4500000, p: 0.38 },
+          "LATAM · 18-24": { control: 29.8, treatment: 31.5, n: 2100000, p: 0.007 },
+          "LATAM · 25-34": { control: 24.6, treatment: 25.4, n: 3100000, p: 0.025 },
+          "LATAM · 35-44": { control: 19.2, treatment: 19.6, n: 2400000, p: 0.19 },
+          "LATAM · 45+":   { control: 15.3, treatment: 15.5, n: 1600000, p: 0.42 }
+        }
+      },
+      revenue: {
+        label: "Revenue per User ($)", format: function(v) { return "$" + v.toFixed(2); },
+        cohorts: {
+          "US · 18-24": { control: 2.45, treatment: 2.58, n: 5000000, p: 0.004 },
+          "US · 25-34": { control: 3.82, treatment: 3.95, n: 7200000, p: 0.015 },
+          "US · 35-44": { control: 4.15, treatment: 4.22, n: 5600000, p: 0.11 },
+          "US · 45+":   { control: 3.28, treatment: 3.32, n: 3900000, p: 0.35 },
+          "EU · 18-24": { control: 1.92, treatment: 2.04, n: 3500000, p: 0.006 },
+          "EU · 25-34": { control: 2.87, treatment: 2.98, n: 5400000, p: 0.02 },
+          "EU · 35-44": { control: 3.15, treatment: 3.21, n: 4100000, p: 0.16 },
+          "EU · 45+":   { control: 2.54, treatment: 2.57, n: 2800000, p: 0.48 },
+          "APAC · 18-24": { control: 1.35, treatment: 1.48, n: 6200000, p: 0.001 },
+          "APAC · 25-34": { control: 2.12, treatment: 2.25, n: 8800000, p: 0.003 },
+          "APAC · 35-44": { control: 2.68, treatment: 2.73, n: 6700000, p: 0.18 },
+          "APAC · 45+":   { control: 1.95, treatment: 1.98, n: 4500000, p: 0.44 },
+          "LATAM · 18-24": { control: 0.85, treatment: 0.94, n: 2100000, p: 0.008 },
+          "LATAM · 25-34": { control: 1.28, treatment: 1.36, n: 3100000, p: 0.018 },
+          "LATAM · 35-44": { control: 1.52, treatment: 1.56, n: 2400000, p: 0.21 },
+          "LATAM · 45+":   { control: 1.05, treatment: 1.07, n: 1600000, p: 0.46 }
+        }
+      }
+    };
+
+    var chart = null;
+    var selectedRow = null;
+
+    function getActiveFilters() {
+      var regions = [];
+      document.querySelectorAll('#regionFilters .checked').forEach(function(el) { regions.push(el.dataset.value.toUpperCase()); });
+      var ages = [];
+      document.querySelectorAll('#ageFilters .checked').forEach(function(el) { ages.push(el.dataset.value); });
+      return { regions: regions, ages: ages };
+    }
+
+    function filterCohorts(metric) {
+      var f = getActiveFilters();
+      var entries = Object.entries(DATA[metric].cohorts);
+      return entries.filter(function(entry) {
+        var parts = entry[0].split(" · ");
+        return f.regions.indexOf(parts[0]) !== -1 && f.ages.indexOf(parts[1]) !== -1;
+      });
+    }
+
+    function toggleFilter(el) {
+      el.classList.toggle('checked');
+      updateDashboard();
+    }
+
+    function selectRow(tr) {
+      if (selectedRow) selectedRow.classList.remove('selected');
+      tr.classList.add('selected');
+      selectedRow = tr;
+    }
+
+    function updateDashboard() {
+      var metric = document.getElementById('metricSelect').value;
+      var data = DATA[metric];
+      var filtered = filterCohorts(metric);
+      if (filtered.length === 0) return;
+
+      var totalControl = 0, totalTreatment = 0, totalN = 0, weightedP = 0;
+      filtered.forEach(function(entry) {
+        var v = entry[1];
+        totalControl += v.control * v.n;
+        totalTreatment += v.treatment * v.n;
+        totalN += v.n;
+        weightedP += v.p * v.n;
+      });
+      var avgControl = totalControl / totalN;
+      var avgTreatment = totalTreatment / totalN;
+      var lift = ((avgTreatment - avgControl) / avgControl * 100);
+      var avgP = weightedP / totalN;
+      var sig = avgP < 0.05;
+
+      document.getElementById('liftValue').textContent = (lift > 0 ? "+" : "") + lift.toFixed(1) + "%";
+      document.getElementById('liftValue').style.color = sig ? '#2E7D32' : 'var(--text-muted)';
+      document.getElementById('pValue').textContent = avgP < 0.001 ? "< 0.001" : avgP.toFixed(4);
+      document.getElementById('controlMean').textContent = data.format(avgControl);
+      document.getElementById('treatmentMean').textContent = data.format(avgTreatment);
+      document.getElementById('sampleSize').textContent = (totalN / 1e6).toFixed(1) + "M";
+      var ciW = lift * 0.35;
+      document.getElementById('ciValue').textContent = "[" + (lift - ciW).toFixed(1) + "%, " + (lift + ciW).toFixed(1) + "%]";
+
+      var badge = document.getElementById('sigBadge');
+      badge.className = sig ? 'badge badge-significant' : 'badge badge-not-significant';
+      badge.textContent = sig ? '● Significant' : '○ Not Significant';
+
+      // Chart
+      var labels = filtered.map(function(e) { return e[0]; });
+      var controlVals = filtered.map(function(e) { return e[1].control; });
+      var treatmentVals = filtered.map(function(e) { return e[1].treatment; });
+
+      if (chart) chart.destroy();
+      chart = new Chart(document.getElementById('experimentChart'), {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: 'Control', data: controlVals, backgroundColor: '#E8E2DA', borderColor: '#D0C8BE', borderWidth: 1, borderRadius: 4 },
+            { label: 'Treatment', data: treatmentVals, backgroundColor: '#A47764', borderColor: '#8B6553', borderWidth: 1, borderRadius: 4 }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { font: { family: 'Inter', size: 12 }, usePointStyle: true, pointStyle: 'rectRounded' } },
+            tooltip: { backgroundColor: '#2C2420', titleFont: { family: 'Inter', size: 13 }, bodyFont: { family: 'Inter', size: 12 }, padding: 12, cornerRadius: 8,
+              callbacks: { label: function(ctx) { return ctx.dataset.label + ": " + data.format(ctx.parsed.y); } }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 11 }, maxRotation: 45 } },
+            y: { grid: { color: '#F0EDE8' }, ticks: { font: { family: 'Inter', size: 11 }, callback: function(v) { return data.format(v); } } }
+          }
+        }
+      });
+
+      // Table — use DOM methods instead of innerHTML
+      var tbody = document.getElementById('cohortTable');
+      while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+      filtered.forEach(function(entry) {
+        var key = entry[0], v = entry[1];
+        var rowLift = ((v.treatment - v.control) / v.control * 100);
+        var rowSig = v.p < 0.05;
+        var tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.addEventListener('click', function() { selectRow(tr); });
+
+        var td1 = document.createElement('td');
+        td1.style.fontWeight = '500';
+        td1.textContent = key;
+        tr.appendChild(td1);
+
+        var td2 = document.createElement('td');
+        td2.textContent = data.format(v.control);
+        tr.appendChild(td2);
+
+        var td3 = document.createElement('td');
+        td3.textContent = data.format(v.treatment);
+        tr.appendChild(td3);
+
+        var td4 = document.createElement('td');
+        td4.style.color = rowSig ? '#2E7D32' : 'var(--text-muted)';
+        td4.style.fontWeight = '600';
+        td4.textContent = (rowLift > 0 ? '+' : '') + rowLift.toFixed(1) + '%';
+        tr.appendChild(td4);
+
+        var td5 = document.createElement('td');
+        td5.style.fontFamily = 'monospace';
+        td5.style.fontSize = '12px';
+        td5.textContent = v.p < 0.001 ? '< 0.001' : v.p.toFixed(4);
+        tr.appendChild(td5);
+
+        var td6 = document.createElement('td');
+        var span = document.createElement('span');
+        span.className = rowSig ? 'badge badge-significant' : 'badge badge-not-significant';
+        span.style.fontSize = '11px';
+        span.textContent = rowSig ? '● Sig' : '○ N/S';
+        td6.appendChild(span);
+        tr.appendChild(td6);
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Event listeners
+    document.getElementById('metricSelect').addEventListener('change', updateDashboard);
+    document.querySelectorAll('.checkbox-pill').forEach(function(el) {
+      el.addEventListener('click', function() { toggleFilter(el); });
+    });
+
+    updateDashboard();
+  </script>
+</body>
+</html>
