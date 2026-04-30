@@ -4,62 +4,415 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Interactive Demos — Tong Liu</title>
-  <link rel="stylesheet" href="shared.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #FAF8F5;
+      --surface: #FFFFFF;
+      --border: #E8E2DA;
+      --mocha: #A47764;
+      --mocha-light: #C49A89;
+      --mocha-bg: #F5EDE9;
+      --peach: #FFBE98;
+      --peach-light: #FFF3EB;
+      --peach-dark: #E8A070;
+      --peri: #6667AB;
+      --peri-bg: #EDEDF7;
+      --peri-light: #8B8CD0;
+      --magenta: #BB2649;
+      --text: #2C2420;
+      --text-secondary: #6B6560;
+      --text-muted: #8B8680;
+      --heading-font: "Cormorant Garamond", Georgia, serif;
+      --body-font: "Inter", -apple-system, sans-serif;
+      --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      --radius: 10px;
+    }
+
+    .reveal { font-family: var(--body-font); color: var(--text); }
+    .reveal .slide-background { background: var(--bg); }
+    body { background: var(--bg); }
+    .reveal .slides section { padding: 40px 50px; text-align: left; }
+    .reveal h1, .reveal h2, .reveal h3 { font-family: var(--heading-font); text-transform: none; color: var(--text); font-weight: 600; }
+    .reveal h2 { font-size: 32pt; }
+    .reveal h3 { font-size: 22pt; }
+    .reveal p, .reveal li, .reveal td { font-size: 14pt; color: var(--text-secondary); line-height: 1.5; }
+    .reveal strong { color: var(--text); }
+    .reveal .progress span { background: var(--mocha); }
+    .reveal .controls { color: var(--mocha); }
+    .reveal .slide-number { color: var(--text-muted); font-family: var(--body-font); font-size: 10pt; }
+
+    /* Section dividers */
+    .section-divider { display: flex !important; flex-direction: column; align-items: center; justify-content: center; text-align: center !important; }
+    .section-divider .badge { display: inline-block; font-size: 10pt; font-weight: 500; letter-spacing: 3pt; color: var(--mocha); border: 1px solid var(--mocha); padding: 6px 20px; border-radius: 100px; margin-bottom: 20px; }
+
+    /* Cards */
+    .demo-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: 0 1px 3px rgba(44,36,32,0.06); transition: all var(--transition); cursor: default; }
+    .demo-card:hover { border-color: var(--mocha-light); box-shadow: 0 4px 12px rgba(44,36,32,0.1); transform: translateY(-2px); }
+
+    /* Stat boxes */
+    .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; transition: all var(--transition); }
+    .stat-box:hover { border-color: var(--mocha-light); box-shadow: 0 2px 8px rgba(44,36,32,0.08); }
+    .stat-val { font-family: var(--heading-font); font-size: 28pt; font-weight: 700; color: var(--mocha); line-height: 1; }
+    .stat-lbl { font-size: 9pt; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); margin-top: 4px; }
+
+    /* Tags */
+    .tag { display: inline-block; font-size: 10pt; font-weight: 500; padding: 3px 10px; border-radius: 100px; margin: 2px; transition: all var(--transition); }
+    .tag-mocha { background: var(--mocha-bg); color: var(--mocha); border: 1px solid rgba(164,119,100,0.2); }
+    .tag-mocha:hover { background: var(--mocha); color: white; }
+    .tag-peri { background: var(--peri-bg); color: var(--peri); border: 1px solid rgba(102,103,171,0.2); }
+    .tag-peri:hover { background: var(--peri); color: white; }
+    .tag-peach { background: var(--peach-light); color: var(--peach-dark); border: 1px solid rgba(255,190,152,0.3); }
+
+    /* Badges */
+    .badge-sig { display: inline-flex; align-items: center; gap: 4px; font-size: 11pt; font-weight: 600; padding: 4px 12px; border-radius: 100px; }
+    .badge-sig.yes { background: #E8F5E9; color: #2E7D32; border: 1px solid #C8E6C9; }
+    .badge-sig.no { background: #F5F5F5; color: #757575; border: 1px solid #E0E0E0; }
+
+    /* Buttons */
+    .btn { display: inline-flex; align-items: center; gap: 6px; font-family: var(--body-font); font-size: 12pt; font-weight: 500; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; transition: all var(--transition); }
+    .btn:hover { border-color: var(--mocha-light); background: var(--mocha-bg); color: var(--mocha); }
+    .btn:active { transform: scale(0.97); }
+    .btn.active { background: var(--mocha); color: white; border-color: var(--mocha); box-shadow: 0 0 0 2px rgba(164,119,100,0.2); }
+    .btn.active:hover { background: var(--mocha-light); }
+
+    /* Checkbox pills */
+    .pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11pt; font-weight: 500; padding: 5px 12px; border-radius: 100px; border: 1px solid var(--border); background: var(--surface); color: var(--text-secondary); cursor: pointer; transition: all var(--transition); user-select: none; }
+    .pill:hover { border-color: var(--peri-light); background: var(--peri-bg); color: var(--peri); }
+    .pill.checked { background: var(--peri); color: white; border-color: var(--peri); box-shadow: 0 0 0 2px rgba(102,103,171,0.15); }
+    .pill.checked:hover { background: var(--peri-light); }
+
+    /* Select */
+    .sel { font-family: var(--body-font); font-size: 13pt; padding: 6px 30px 6px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); cursor: pointer; appearance: none; transition: all var(--transition); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='%238B8680' stroke-width='1.5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
+    .sel:hover { border-color: var(--mocha-light); }
+    .sel:focus { outline: none; border-color: var(--mocha); box-shadow: 0 0 0 3px rgba(164,119,100,0.15); }
+
+    /* Data table */
+    .dtable { width: 100%; border-collapse: collapse; font-size: 12pt; }
+    .dtable th { text-align: left; font-size: 9pt; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-muted); padding: 8px 10px; border-bottom: 2px solid var(--border); }
+    .dtable td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    .dtable tbody tr { transition: background var(--transition); cursor: pointer; }
+    .dtable tbody tr:hover { background: var(--peach-light); }
+    .dtable tbody tr.selected { background: var(--mocha-bg); }
+
+    /* Pipeline nodes */
+    .pipe-node { cursor: pointer; transition: all var(--transition); }
+    .pipe-node rect { transition: all var(--transition); }
+    .pipe-node:hover rect { stroke: var(--mocha); stroke-width: 2; filter: drop-shadow(0 2px 8px rgba(164,119,100,0.2)); }
+    .pipe-node.active rect { stroke: var(--mocha); stroke-width: 2.5; fill: var(--mocha-bg); filter: drop-shadow(0 4px 12px rgba(164,119,100,0.25)); }
+    .pipe-node:hover text.nlabel { fill: var(--mocha); }
+    .pipe-node.active text.nlabel { fill: var(--mocha); font-weight: 600; }
+    .edge-line { stroke: var(--border); stroke-width: 2; fill: none; }
+    .arrow-head { fill: var(--border); }
+    .particle { fill: var(--peach); }
+
+    /* Detail panel */
+    .detail-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-top: 12px; }
+    .schema-tag { display: inline-block; font-size: 10pt; font-family: monospace; background: var(--peach-light); color: var(--peach-dark); padding: 2px 8px; border-radius: 4px; margin: 2px; }
+    .tech-tag { display: inline-block; font-size: 10pt; background: var(--peri-bg); color: var(--peri); padding: 2px 8px; border-radius: 4px; margin: 2px; }
+
+    /* Input */
+    .inp { font-family: var(--body-font); font-size: 13pt; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); width: 100%; transition: all var(--transition); }
+    .inp:hover { border-color: var(--mocha-light); }
+    .inp:focus { outline: none; border-color: var(--mocha); box-shadow: 0 0 0 3px rgba(164,119,100,0.15); }
+    .inp-label { font-size: 10pt; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px; display: block; }
+
+    /* Result box */
+    .res-box { text-align: center; padding: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); transition: all var(--transition); }
+    .res-box:hover { box-shadow: 0 2px 8px rgba(44,36,32,0.06); }
+    .res-box.sig-yes { background: #E8F5E9; border-color: #C8E6C9; }
+    .res-box.sig-no { background: #F5F5F5; border-color: #E0E0E0; }
+    .res-val { font-family: var(--heading-font); font-size: 24pt; font-weight: 700; line-height: 1; }
+    .res-lbl { font-size: 9pt; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); margin-top: 4px; }
+
+    /* Group card */
+    .grp-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; transition: all var(--transition); }
+    .grp-card:hover { border-color: var(--mocha-light); box-shadow: 0 2px 6px rgba(44,36,32,0.06); }
+    .grp-card.control { border-top: 3px solid var(--border); }
+    .grp-card.treatment { border-top: 3px solid var(--mocha); }
+    .grp-title { font-size: 9pt; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; }
+
+    /* Sample note */
+    .sample-note { background: var(--peach-light); border: 1px solid rgba(255,190,152,0.3); border-radius: 8px; padding: 10px 14px; font-size: 12pt; color: var(--peach-dark); margin-top: 12px; line-height: 1.5; }
+
+    /* Back link */
+    .back-link { font-size: 12pt; color: var(--text-muted); text-decoration: none; transition: color var(--transition); }
+    .back-link:hover { color: var(--peri); }
+
+    /* Section label */
+    .slabel { font-size: 9pt; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; }
+
+    /* Footer text */
+    .foot { font-size: 10pt; color: var(--text-muted); margin-top: 16px; }
+    .foot a { color: var(--peri); text-decoration: none; }
+  </style>
 </head>
 <body>
-  <div class="page">
-    <div class="page-header">
-      <div class="breadcrumb">
-        <a href="../index.html">← Portfolio</a>
-      </div>
-      <h1 class="page-title">Interactive Demos</h1>
-      <p class="page-subtitle">Live demonstrations of data engineering projects — pure frontend, synthetic data.</p>
-    </div>
+  <div class="reveal">
+    <div class="slides">
 
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+      <!-- ======== TITLE ======== -->
+      <section class="section-divider">
+        <div class="badge">INTERACTIVE DEMOS</div>
+        <h2 style="font-size: 40pt; margin-bottom: 10px;">Tong Liu</h2>
+        <p style="color: var(--mocha); letter-spacing: 2px; font-weight: 500; font-size: 14pt;">DATA ENGINEER · PROJECT DEMOS</p>
+        <p style="color: var(--text-muted); font-size: 12pt; margin-top: 24px;">Three interactive demonstrations of data engineering projects.<br>Use ← → arrows or swipe to navigate.</p>
+        <p class="foot" style="margin-top: 40px;"><a href="../index.html">← Back to Resume</a></p>
+      </section>
 
-      <a href="experiment-dashboard.html" style="text-decoration: none; color: inherit;">
-        <div class="card" style="height: 100%; cursor: pointer;">
-          <div style="font-size: 36px; margin-bottom: 16px;">📊</div>
-          <div class="card-title">Experiment Dashboard</div>
-          <div style="margin-bottom: 12px;">
-            <span class="badge badge-mocha">Meta</span>
-            <span class="badge badge-peach">Chart.js</span>
+      <!-- ======== DEMO 1: EXPERIMENT DASHBOARD ======== -->
+      <section class="section-divider">
+        <div class="badge">DEMO 1 · META</div>
+        <h2 style="font-size: 36pt;">Holdout Experiment<br><em style="color: var(--mocha);">Dashboard</em></h2>
+        <p style="font-size: 13pt; color: var(--text-secondary); max-width: 500px; margin: 16px auto 0;">Interactive experiment results with cohort filtering and statistical significance testing.</p>
+      </section>
+
+      <section id="dashboard">
+        <h3 style="margin-bottom: 12px;">Experiment Dashboard</h3>
+        <!-- Controls -->
+        <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; margin-bottom: 16px;">
+          <div>
+            <div class="slabel">Metric</div>
+            <select class="sel" id="metricSelect"><option value="dau">DAU</option><option value="engagement">Engagement Rate</option><option value="revenue">Revenue / User</option></select>
           </div>
-          <p class="card-desc">Interactive holdout experiment results dashboard with cohort filtering, statistical significance testing, and per-metric drill-down.</p>
-        </div>
-      </a>
-
-      <a href="pipeline-visualizer.html" style="text-decoration: none; color: inherit;">
-        <div class="card" style="height: 100%; cursor: pointer;">
-          <div style="font-size: 36px; margin-bottom: 16px;">🔄</div>
-          <div class="card-title">Pipeline Visualizer</div>
-          <div style="margin-bottom: 12px;">
-            <span class="badge badge-mocha">Meta</span>
-            <span class="badge badge-peri">SVG</span>
+          <div>
+            <div class="slabel">Region</div>
+            <div id="regionF"><span class="pill checked" data-v="us" onclick="tp(this)">🇺🇸 US</span> <span class="pill checked" data-v="eu" onclick="tp(this)">🇪🇺 EU</span> <span class="pill checked" data-v="apac" onclick="tp(this)">🌏 APAC</span> <span class="pill checked" data-v="latam" onclick="tp(this)">🌎 LATAM</span></div>
           </div>
-          <p class="card-desc">Animated multi-stage data pipeline visualization. Click nodes to explore each stage's schema, tech stack, and sample data.</p>
-        </div>
-      </a>
-
-      <a href="ab-test-calculator.html" style="text-decoration: none; color: inherit;">
-        <div class="card" style="height: 100%; cursor: pointer;">
-          <div style="font-size: 36px; margin-bottom: 16px;">🧮</div>
-          <div class="card-title">A/B Test Calculator</div>
-          <div style="margin-bottom: 12px;">
-            <span class="badge badge-mocha">LendingClub</span>
-            <span class="badge badge-peri">Statistics</span>
+          <div>
+            <div class="slabel">Age</div>
+            <div id="ageF"><span class="pill checked" data-v="18-24" onclick="tp(this)">18-24</span> <span class="pill checked" data-v="25-34" onclick="tp(this)">25-34</span> <span class="pill checked" data-v="35-44" onclick="tp(this)">35-44</span> <span class="pill checked" data-v="45+" onclick="tp(this)">45+</span></div>
           </div>
-          <p class="card-desc">Real-time statistical significance calculator with z-score, p-value, confidence intervals, and normal distribution visualization.</p>
         </div>
-      </a>
+        <!-- Chart + Summary -->
+        <div style="display: grid; grid-template-columns: 1fr 240px; gap: 16px;">
+          <div class="demo-card" style="padding: 12px; height: 240px;"><canvas id="expChart"></canvas></div>
+          <div>
+            <div class="demo-card" style="margin-bottom: 8px;">
+              <div class="slabel">Result</div>
+              <span id="sigB" class="badge-sig yes">● Significant</span>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;">
+                <div class="stat-box"><div class="stat-val" id="liftV" style="font-size: 22pt;">+3.2%</div><div class="stat-lbl">Lift</div></div>
+                <div class="stat-box"><div class="stat-val" id="pV" style="font-size: 18pt;">0.003</div><div class="stat-lbl">P-Value</div></div>
+              </div>
+            </div>
+            <div class="demo-card" style="font-size: 12pt;">
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--text-muted)">Control</span><span id="cM" style="font-weight:600">—</span></div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:var(--text-muted)">Treatment</span><span id="tM" style="font-weight:600">—</span></div>
+              <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted)">95% CI</span><span id="ciV" style="font-weight:600">—</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-    </div>
+      <section id="cohort-table">
+        <h3 style="margin-bottom: 12px;">Cohort Breakdown</h3>
+        <table class="dtable"><thead><tr><th>Cohort</th><th>Control</th><th>Treatment</th><th>Lift</th><th>P-Value</th><th>Status</th></tr></thead><tbody id="cTbl"></tbody></table>
+        <p class="foot">Synthetic data · <a href="../index.html">Resume</a></p>
+      </section>
 
-    <div class="demo-footer">
-      <p>Tong Liu · Data Engineer · <a href="../index.html">Back to Portfolio</a></p>
-      <p style="margin-top: 4px;">PANTONE Colors of the Year: Mocha Mousse (2025) · Peach Fuzz (2024) · Very Peri (2022)</p>
+      <!-- ======== DEMO 2: PIPELINE ======== -->
+      <section class="section-divider">
+        <div class="badge">DEMO 2 · META</div>
+        <h2 style="font-size: 36pt;">Pipeline<br><em style="color: var(--mocha);">Visualizer</em></h2>
+        <p style="font-size: 13pt; color: var(--text-secondary); max-width: 500px; margin: 16px auto 0;">Animated multi-stage data pipeline. Click nodes to explore schema and sample data.</p>
+      </section>
+
+      <section id="pipeline">
+        <h3 style="margin-bottom: 8px;">Holdout Measurement Pipeline</h3>
+        <p style="font-size: 12pt; color: var(--text-muted); margin-bottom: 12px;">Click a node to see details below.</p>
+        <div class="demo-card" style="padding: 20px 10px;"><svg id="pipeSvg" viewBox="0 0 920 200" style="width:100%;height:200px;"></svg></div>
+        <div id="pipeDetail"><div class="demo-card" style="margin-top:12px;text-align:center;color:var(--text-muted);font-size:13pt;padding:24px;">Click a pipeline node above ↑</div></div>
+      </section>
+
+      <!-- ======== DEMO 3: A/B CALCULATOR ======== -->
+      <section class="section-divider">
+        <div class="badge">DEMO 3 · LENDINGCLUB</div>
+        <h2 style="font-size: 36pt;">A/B Test<br><em style="color: var(--mocha);">Calculator</em></h2>
+        <p style="font-size: 13pt; color: var(--text-secondary); max-width: 500px; margin: 16px auto 0;">Real-time statistical significance calculator with z-test and confidence intervals.</p>
+      </section>
+
+      <section id="ab-calc">
+        <h3 style="margin-bottom: 10px;">Significance Calculator</h3>
+        <div style="margin-bottom: 12px;">
+          <div class="slabel">Presets</div>
+          <span class="btn" id="pr1" onclick="setP('pr1',1000,5.0,1000,5.8)">1K Quick</span>
+          <span class="btn" id="pr2" onclick="setP('pr2',10000,3.5,10000,4.0)">10K Medium</span>
+          <span class="btn active" id="pr3" onclick="setP('pr3',100000,4.2,100000,4.8)">100K Large</span>
+          <span class="btn" id="pr4" onclick="setP('pr4',50000,8.5,50000,5.1)">LendingClub</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <!-- Inputs -->
+          <div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+              <div class="grp-card control">
+                <div class="grp-title">Control</div>
+                <div class="inp-label">Sample Size</div><input type="number" class="inp" id="cn" value="100000">
+                <div class="inp-label" style="margin-top:8px">Conv Rate (%)</div><input type="number" class="inp" id="cr" value="4.2" step="0.1">
+              </div>
+              <div class="grp-card treatment">
+                <div class="grp-title">Treatment</div>
+                <div class="inp-label">Sample Size</div><input type="number" class="inp" id="tn" value="100000">
+                <div class="inp-label" style="margin-top:8px">Conv Rate (%)</div><input type="number" class="inp" id="tr" value="4.8" step="0.1">
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+              <div class="res-box" id="rLift"><div class="res-val" id="abLift">+14.3%</div><div class="res-lbl">Lift</div></div>
+              <div class="res-box" id="rP"><div class="res-val" id="abP" style="font-size:18pt">0.0001</div><div class="res-lbl">P-Value</div></div>
+              <div class="res-box" id="rSig"><div class="res-val" id="abSig" style="font-size:16pt">● Sig</div><div class="res-lbl">α = 0.05</div></div>
+            </div>
+          </div>
+          <!-- Chart -->
+          <div class="demo-card" style="padding: 12px; height: 260px;"><canvas id="distChart"></canvas></div>
+        </div>
+        <div class="sample-note" id="abNote"></div>
+        <p class="foot">Two-proportion z-test · <a href="../index.html">Resume</a></p>
+      </section>
+
+      <!-- ======== END ======== -->
+      <section class="section-divider">
+        <h2 style="font-size: 32pt; margin-bottom: 16px;">Tong Liu</h2>
+        <p style="color: var(--mocha); letter-spacing: 2px; font-weight: 500; font-size: 13pt; margin-bottom: 24px;">DATA ENGINEER</p>
+        <a href="../index.html" style="display:inline-flex;align-items:center;gap:8px;padding:10px 24px;background:var(--mocha);color:white;border-radius:100px;text-decoration:none;font-size:13pt;font-weight:500;transition:all 0.2s;">← Back to Resume</a>
+        <p class="foot" style="margin-top: 30px;">PANTONE: Mocha Mousse (2025) · Peach Fuzz (2024) · Very Peri (2022)</p>
+      </section>
+
     </div>
   </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+  <script>
+  Reveal.initialize({ controls: true, progress: true, slideNumber: true, hash: true, transition: 'fade', center: false });
+
+  /* ========== DASHBOARD DATA ========== */
+  var D = {
+    dau: { fmt: function(v){return (v/1e6).toFixed(1)+"M"}, c: {
+      "US·18-24":{c:12.4e6,t:12.85e6,n:5e6,p:.002},"US·25-34":{c:18.2e6,t:18.75e6,n:7.2e6,p:.008},"US·35-44":{c:14.1e6,t:14.3e6,n:5.6e6,p:.12},"US·45+":{c:9.8e6,t:9.9e6,n:3.9e6,p:.34},
+      "EU·18-24":{c:8.9e6,t:9.25e6,n:3.5e6,p:.005},"EU·25-34":{c:13.5e6,t:13.8e6,n:5.4e6,p:.04},"EU·35-44":{c:10.2e6,t:10.35e6,n:4.1e6,p:.18},"EU·45+":{c:7.1e6,t:7.15e6,n:2.8e6,p:.52},
+      "APAC·18-24":{c:15.6e6,t:16.2e6,n:6.2e6,p:.001},"APAC·25-34":{c:22.1e6,t:22.8e6,n:8.8e6,p:.006},"APAC·35-44":{c:16.8e6,t:17e6,n:6.7e6,p:.15},"APAC·45+":{c:11.2e6,t:11.3e6,n:4.5e6,p:.41},
+      "LATAM·18-24":{c:5.2e6,t:5.45e6,n:2.1e6,p:.009},"LATAM·25-34":{c:7.8e6,t:8.05e6,n:3.1e6,p:.02},"LATAM·35-44":{c:5.9e6,t:6e6,n:2.4e6,p:.22},"LATAM·45+":{c:3.9e6,t:3.95e6,n:1.6e6,p:.48}
+    }},
+    engagement: { fmt: function(v){return v.toFixed(2)+"%"}, c: {
+      "US·18-24":{c:34.2,t:36.1,n:5e6,p:.001},"US·25-34":{c:28.7,t:29.8,n:7.2e6,p:.01},"US·35-44":{c:22.4,t:22.9,n:5.6e6,p:.08},"US·45+":{c:18.1,t:18.3,n:3.9e6,p:.31},
+      "EU·18-24":{c:31.5,t:33.2,n:3.5e6,p:.003},"EU·25-34":{c:26.3,t:27.1,n:5.4e6,p:.03},"EU·35-44":{c:20.8,t:21.2,n:4.1e6,p:.14},"EU·45+":{c:16.5,t:16.7,n:2.8e6,p:.45},
+      "APAC·18-24":{c:38.9,t:41.2,n:6.2e6,p:.0005},"APAC·25-34":{c:32.1,t:33.5,n:8.8e6,p:.004},"APAC·35-44":{c:25.6,t:26,n:6.7e6,p:.16},"APAC·45+":{c:20.2,t:20.5,n:4.5e6,p:.38},
+      "LATAM·18-24":{c:29.8,t:31.5,n:2.1e6,p:.007},"LATAM·25-34":{c:24.6,t:25.4,n:3.1e6,p:.025},"LATAM·35-44":{c:19.2,t:19.6,n:2.4e6,p:.19},"LATAM·45+":{c:15.3,t:15.5,n:1.6e6,p:.42}
+    }},
+    revenue: { fmt: function(v){return "$"+v.toFixed(2)}, c: {
+      "US·18-24":{c:2.45,t:2.58,n:5e6,p:.004},"US·25-34":{c:3.82,t:3.95,n:7.2e6,p:.015},"US·35-44":{c:4.15,t:4.22,n:5.6e6,p:.11},"US·45+":{c:3.28,t:3.32,n:3.9e6,p:.35},
+      "EU·18-24":{c:1.92,t:2.04,n:3.5e6,p:.006},"EU·25-34":{c:2.87,t:2.98,n:5.4e6,p:.02},"EU·35-44":{c:3.15,t:3.21,n:4.1e6,p:.16},"EU·45+":{c:2.54,t:2.57,n:2.8e6,p:.48},
+      "APAC·18-24":{c:1.35,t:1.48,n:6.2e6,p:.001},"APAC·25-34":{c:2.12,t:2.25,n:8.8e6,p:.003},"APAC·35-44":{c:2.68,t:2.73,n:6.7e6,p:.18},"APAC·45+":{c:1.95,t:1.98,n:4.5e6,p:.44},
+      "LATAM·18-24":{c:.85,t:.94,n:2.1e6,p:.008},"LATAM·25-34":{c:1.28,t:1.36,n:3.1e6,p:.018},"LATAM·35-44":{c:1.52,t:1.56,n:2.4e6,p:.21},"LATAM·45+":{c:1.05,t:1.07,n:1.6e6,p:.46}
+    }}
+  };
+  var chart1=null, selRow=null;
+  function tp(el){el.classList.toggle('checked');upDash();}
+  function upDash(){
+    var m=document.getElementById('metricSelect').value, d=D[m], f=Object.entries(d.c);
+    var rr=[],aa=[];document.querySelectorAll('#regionF .checked').forEach(function(e){rr.push(e.dataset.v.toUpperCase())});
+    document.querySelectorAll('#ageF .checked').forEach(function(e){aa.push(e.dataset.v)});
+    f=f.filter(function(e){var p=e[0].split("·");return rr.indexOf(p[0])!==-1&&aa.indexOf(p[1])!==-1});
+    if(!f.length)return;
+    var tc=0,tt=0,tn=0,wp=0;f.forEach(function(e){var v=e[1];tc+=v.c*v.n;tt+=v.t*v.n;tn+=v.n;wp+=v.p*v.n});
+    var ac=tc/tn,at=tt/tn,lift=(at-ac)/ac*100,ap=wp/tn,sig=ap<.05;
+    document.getElementById('liftV').textContent=(lift>0?"+":"")+lift.toFixed(1)+"%";
+    document.getElementById('liftV').style.color=sig?'#2E7D32':'var(--text-muted)';
+    document.getElementById('pV').textContent=ap<.001?"<.001":ap.toFixed(4);
+    document.getElementById('cM').textContent=d.fmt(ac);document.getElementById('tM').textContent=d.fmt(at);
+    var cw=lift*.35;document.getElementById('ciV').textContent="["+(lift-cw).toFixed(1)+"%,"+(lift+cw).toFixed(1)+"%]";
+    var b=document.getElementById('sigB');b.className=sig?'badge-sig yes':'badge-sig no';b.textContent=sig?'● Significant':'○ Not Significant';
+    if(chart1)chart1.destroy();
+    chart1=new Chart(document.getElementById('expChart'),{type:'bar',data:{labels:f.map(function(e){return e[0]}),datasets:[
+      {label:'Control',data:f.map(function(e){return e[1].c}),backgroundColor:'#E8E2DA',borderColor:'#D0C8BE',borderWidth:1,borderRadius:3},
+      {label:'Treatment',data:f.map(function(e){return e[1].t}),backgroundColor:'#A47764',borderColor:'#8B6553',borderWidth:1,borderRadius:3}
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{family:'Inter',size:10},usePointStyle:true}},tooltip:{backgroundColor:'#2C2420',cornerRadius:6,padding:8}},scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:45}},y:{grid:{color:'#F0EDE8'},ticks:{font:{size:9},callback:function(v){return d.fmt(v)}}}}}});
+    var tb=document.getElementById('cTbl');while(tb.firstChild)tb.removeChild(tb.firstChild);
+    f.forEach(function(e){var k=e[0],v=e[1],rl=(v.t-v.c)/v.c*100,rs=v.p<.05;
+      var tr=document.createElement('tr');tr.onclick=function(){if(selRow)selRow.classList.remove('selected');tr.classList.add('selected');selRow=tr};
+      var cells=[k,d.fmt(v.c),d.fmt(v.t),(rl>0?'+':'')+rl.toFixed(1)+'%',v.p<.001?'<.001':v.p.toFixed(4),rs?'● Sig':'○ N/S'];
+      cells.forEach(function(c,i){var td=document.createElement('td');td.textContent=c;
+        if(i===0)td.style.fontWeight='500';if(i===3){td.style.color=rs?'#2E7D32':'var(--text-muted)';td.style.fontWeight='600';}
+        if(i===4){td.style.fontFamily='monospace';td.style.fontSize='11pt';}
+        if(i===5){var sp=document.createElement('span');sp.className=rs?'badge-sig yes':'badge-sig no';sp.style.fontSize='10pt';sp.textContent=c;td.textContent='';td.appendChild(sp);}
+        tr.appendChild(td)});tb.appendChild(tr)});
+  }
+  document.getElementById('metricSelect').addEventListener('change',upDash);upDash();
+
+  /* ========== PIPELINE ========== */
+  var PN=[
+    {id:'raw',x:20,y:70,w:150,h:55,label:'Raw Experiment',sub:'Ingestion',icon:'📥',desc:'Ingests raw holdout experiment statistics. Each row = one arm metric value for a time window.',tech:['Python','Hive'],schema:['experiment_id','arm','metric','value','date']},
+    {id:'cohort',x:200,y:10,w:150,h:55,label:'Creator-Cohort',sub:'Segmentation',icon:'👥',desc:'Segments by creator cohort — grouping users by join date for long-term behavior analysis.',tech:['Python','Presto','Hive'],schema:['experiment_id','arm','cohort_id','cohort_start','value']},
+    {id:'subpop',x:380,y:70,w:150,h:55,label:'Subpopulation',sub:'Breakout',icon:'🌍',desc:'Breaks down by country, region, and age group for differential treatment effect analysis.',tech:['Python','Presto'],schema:['experiment_id','arm','cohort','country','region','age','value']},
+    {id:'agg',x:560,y:10,w:150,h:55,label:'Aggregation',sub:'& Dedup',icon:'🔄',desc:'Aggregates into unified product-contribution table. Handles dedup from rebalanced experiments.',tech:['Python','Hive','Backfill'],schema:['experiment_id','product','metric','control','treatment','lift','p_value']},
+    {id:'table',x:740,y:70,w:150,h:55,label:'Product Table',sub:'Leadership',icon:'📋',desc:'Final table consumed by leadership dashboards. One row per experiment × metric.',tech:['Hive','Dashboard API'],schema:['experiment_id','product','metric','lift','ci','p_value','status']}
+  ];
+  var PE=[{f:'raw',t:'cohort'},{f:'cohort',t:'subpop'},{f:'subpop',t:'agg'},{f:'agg',t:'table'}];
+  function buildPipe(){
+    var s=document.getElementById('pipeSvg');while(s.firstChild)s.removeChild(s.firstChild);
+    PE.forEach(function(e,i){var fn=PN.find(function(n){return n.id===e.f}),tn=PN.find(function(n){return n.id===e.t});
+      var x1=fn.x+fn.w,y1=fn.y+fn.h/2,x2=tn.x,y2=tn.y+tn.h/2,mx=(x1+x2)/2;
+      var p=document.createElementNS('http://www.w3.org/2000/svg','path');p.setAttribute('class','edge-line');
+      p.setAttribute('d','M'+x1+' '+y1+' C'+mx+' '+y1+' '+mx+' '+y2+' '+x2+' '+y2);p.id='pe'+i;s.appendChild(p);
+      var ar=document.createElementNS('http://www.w3.org/2000/svg','polygon');ar.setAttribute('class','arrow-head');
+      ar.setAttribute('points',(x2-7)+','+(y2-4)+' '+x2+','+y2+' '+(x2-7)+','+(y2+4));s.appendChild(ar);
+      var ci=document.createElementNS('http://www.w3.org/2000/svg','circle');ci.setAttribute('class','particle');ci.setAttribute('r','4');
+      var am=document.createElementNS('http://www.w3.org/2000/svg','animateMotion');am.setAttribute('dur',(2+i*.4)+'s');am.setAttribute('repeatCount','indefinite');am.setAttribute('begin',(i*.6)+'s');
+      var mp=document.createElementNS('http://www.w3.org/2000/svg','mpath');mp.setAttributeNS('http://www.w3.org/1999/xlink','href','#pe'+i);am.appendChild(mp);ci.appendChild(am);s.appendChild(ci)});
+    PN.forEach(function(n){var g=document.createElementNS('http://www.w3.org/2000/svg','g');g.setAttribute('class','pipe-node');g.id='pn-'+n.id;g.style.cursor='pointer';
+      g.addEventListener('click',function(){showPN(n.id)});
+      var r=document.createElementNS('http://www.w3.org/2000/svg','rect');r.setAttribute('x',n.x);r.setAttribute('y',n.y);r.setAttribute('width',n.w);r.setAttribute('height',n.h);r.setAttribute('rx','8');r.setAttribute('fill','#FFF');r.setAttribute('stroke','#E8E2DA');r.setAttribute('stroke-width','1.5');g.appendChild(r);
+      var ic=document.createElementNS('http://www.w3.org/2000/svg','text');ic.setAttribute('x',n.x+12);ic.setAttribute('y',n.y+24);ic.setAttribute('font-size','16');ic.textContent=n.icon;g.appendChild(ic);
+      var lb=document.createElementNS('http://www.w3.org/2000/svg','text');lb.setAttribute('class','nlabel');lb.setAttribute('x',n.x+34);lb.setAttribute('y',n.y+24);lb.setAttribute('font-family','Inter');lb.setAttribute('font-size','12');lb.setAttribute('font-weight','600');lb.setAttribute('fill','#2C2420');lb.textContent=n.label;g.appendChild(lb);
+      var sb=document.createElementNS('http://www.w3.org/2000/svg','text');sb.setAttribute('x',n.x+34);sb.setAttribute('y',n.y+40);sb.setAttribute('font-family','Inter');sb.setAttribute('font-size','10');sb.setAttribute('fill','#8B8680');sb.textContent=n.sub;g.appendChild(sb);
+      s.appendChild(g)});
+  }
+  function showPN(id){
+    document.querySelectorAll('.pipe-node').forEach(function(e){e.classList.remove('active')});
+    document.getElementById('pn-'+id).classList.add('active');
+    var n=PN.find(function(x){return x.id===id}),a=document.getElementById('pipeDetail');
+    while(a.firstChild)a.removeChild(a.firstChild);
+    var c=document.createElement('div');c.className='detail-box';
+    var h=document.createElement('h3');h.style.cssText='font-family:var(--heading-font);font-size:18pt;color:var(--mocha);margin-bottom:8px';h.textContent=n.icon+' '+n.label;c.appendChild(h);
+    var p=document.createElement('p');p.style.cssText='font-size:12pt;color:var(--text-secondary);margin-bottom:10px';p.textContent=n.desc;c.appendChild(p);
+    var tl=document.createElement('div');tl.style.marginBottom='8px';
+    var tlab=document.createElement('span');tlab.style.cssText='font-size:9pt;font-weight:600;color:var(--text-muted);margin-right:8px';tlab.textContent='TECH';tl.appendChild(tlab);
+    n.tech.forEach(function(t){var s=document.createElement('span');s.className='tech-tag';s.textContent=t;tl.appendChild(s)});c.appendChild(tl);
+    var sl=document.createElement('div');
+    var slab=document.createElement('span');slab.style.cssText='font-size:9pt;font-weight:600;color:var(--text-muted);margin-right:8px';slab.textContent='SCHEMA';sl.appendChild(slab);
+    n.schema.forEach(function(s){var sp=document.createElement('span');sp.className='schema-tag';sp.textContent=s;sl.appendChild(sp)});c.appendChild(sl);
+    a.appendChild(c);
+  }
+  buildPipe();
+
+  /* ========== A/B CALCULATOR ========== */
+  var distC=null;
+  function nCDF(x){var a1=.254829592,a2=-.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=.3275911;var s=x<0?-1:1;x=Math.abs(x)/Math.sqrt(2);var t=1/(1+p*x);var y=1-(((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);return .5*(1+s*y)}
+  function nPDF(x){return Math.exp(-.5*x*x)/Math.sqrt(2*Math.PI)}
+  function calc(){
+    var n1=parseInt(document.getElementById('cn').value)||1,n2=parseInt(document.getElementById('tn').value)||1;
+    var p1=parseFloat(document.getElementById('cr').value)/100||0,p2=parseFloat(document.getElementById('tr').value)/100||0;
+    var pp=(p1*n1+p2*n2)/(n1+n2),se=Math.sqrt(pp*(1-pp)*(1/n1+1/n2)),z=se>0?(p2-p1)/se:0,pv=2*(1-nCDF(Math.abs(z))),sig=pv<.05;
+    var rl=p1>0?(p2-p1)/p1*100:0,al=(p2-p1)*100,cm=1.96*se*100;
+    var za=1.96,zb=.842,rn=Math.ceil(Math.pow(za+zb,2)*(p1*(1-p1)+p2*(1-p2))/Math.pow(p2-p1||.001,2));
+    document.getElementById('abLift').textContent=(rl>0?'+':'')+rl.toFixed(1)+'%';document.getElementById('abLift').style.color=sig?'#2E7D32':'#757575';
+    document.getElementById('abP').textContent=pv<.0001?'<.0001':pv.toFixed(4);
+    document.getElementById('abSig').textContent=sig?'● Sig':'○ N/S';document.getElementById('abSig').style.color=sig?'#2E7D32':'#757575';
+    document.getElementById('rSig').className=sig?'res-box sig-yes':'res-box sig-no';
+    document.getElementById('abNote').textContent='To detect '+Math.abs(rl).toFixed(1)+'% lift at 95% confidence with 80% power: '+rn.toLocaleString()+' users/group needed.';
+    var lb=[],dt=[],bg=[];for(var x=-4;x<=4;x+=.1){var r=Math.round(x*10)/10;lb.push(r.toFixed(1));dt.push(nPDF(r));bg.push(r<=-1.96||r>=1.96?'rgba(187,38,73,0.3)':'rgba(164,119,100,0.15)');}
+    if(distC)distC.destroy();
+    distC=new Chart(document.getElementById('distChart'),{type:'bar',data:{labels:lb,datasets:[{data:dt,backgroundColor:bg,borderWidth:0,barPercentage:1,categoryPercentage:1}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#2C2420',cornerRadius:6,callbacks:{title:function(c){return 'z='+c[0].label},label:function(c){return c.parsed.y.toFixed(4)}}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:8},callback:function(v){var l=parseFloat(this.getLabelForValue(v));if(l===-4||l===-2||l===0||l===2||l===4)return l;return ''},maxRotation:0}},y:{display:false}}}});
+  }
+  function setP(id,a,b,c,d){document.getElementById('cn').value=a;document.getElementById('cr').value=b;document.getElementById('tn').value=c;document.getElementById('tr').value=d;
+    document.querySelectorAll('.btn').forEach(function(b){b.classList.remove('active')});document.getElementById(id).classList.add('active');calc()}
+  document.querySelectorAll('.inp').forEach(function(i){i.addEventListener('input',function(){document.querySelectorAll('.btn').forEach(function(b){b.classList.remove('active')});calc()})});
+  calc();
+  </script>
 </body>
 </html>
