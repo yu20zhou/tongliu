@@ -35,6 +35,7 @@
 
     .reveal { font-family: var(--body-font); color: var(--text); }
     .reveal .slide-background { background: var(--bg); }
+    .reveal .slides section { background: var(--bg); }
     body { background: var(--bg); }
     .reveal .slides section { padding: 40px 50px; text-align: left; }
     .reveal h1, .reveal h2, .reveal h3 { font-family: var(--heading-font); text-transform: none; color: var(--text); font-weight: 600; }
@@ -286,7 +287,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
   <script>
-  Reveal.initialize({ controls: true, progress: true, slideNumber: true, hash: true, transition: 'fade', center: false });
+  Reveal.initialize({ controls: true, progress: true, slideNumber: true, hash: true, transition: 'none', center: false });
 
   /* ========== DASHBOARD DATA ========== */
   var D = {
